@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 
 from app.models import (
-    Prompt, PromptCreate, PromptUpdate,
+    Prompt, PromptCreate, PromptUpdate, PromptPartialUpdate,
     Collection, CollectionCreate,
     PromptList, CollectionList, HealthResponse,
     get_current_time
@@ -64,14 +64,10 @@ def list_prompts(
 
 @app.get("/prompts/{prompt_id}", response_model=Prompt)
 def get_prompt(prompt_id: str):
-    # BUG #1: This will raise a 500 error if prompt doesn't exist
-    # because we're accessing .id on None
-    # Should return 404 instead!
     prompt = storage.get_prompt(prompt_id)
-    
-    # This line causes the bug - accessing attribute on None
-    if prompt.id:
-        return prompt
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+    return prompt
 
 
 @app.post("/prompts", response_model=Prompt, status_code=201)
@@ -98,8 +94,6 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
         if not collection:
             raise HTTPException(status_code=400, detail="Collection not found")
     
-    # BUG #2: We're not updating the updated_at timestamp!
-    # The updated prompt keeps the old timestamp
     updated_prompt = Prompt(
         id=existing.id,
         title=prompt_data.title,
@@ -107,14 +101,36 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate):
         description=prompt_data.description,
         collection_id=prompt_data.collection_id,
         created_at=existing.created_at,
-        updated_at=existing.updated_at  # BUG: Should be get_current_time()
+        updated_at=get_current_time()
     )
     
     return storage.update_prompt(prompt_id, updated_prompt)
 
 
-# NOTE: PATCH endpoint is missing! Students need to implement this.
-# It should allow partial updates (only update provided fields)
+@app.patch("/prompts/{prompt_id}", response_model=Prompt)
+def partial_update_prompt(prompt_id: str, prompt_data: PromptPartialUpdate):
+    existing = storage.get_prompt(prompt_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+    
+    # Validate collection if provided
+    if prompt_data.collection_id:
+        collection = storage.get_collection(prompt_data.collection_id)
+        if not collection:
+            raise HTTPException(status_code=400, detail="Collection not found")
+    
+    # Only update provided fields
+    updated_prompt = Prompt(
+        id=existing.id,
+        title=prompt_data.title if prompt_data.title is not None else existing.title,
+        content=prompt_data.content if prompt_data.content is not None else existing.content,
+        description=prompt_data.description if prompt_data.description is not None else existing.description,
+        collection_id=prompt_data.collection_id if prompt_data.collection_id is not None else existing.collection_id,
+        created_at=existing.created_at,
+        updated_at=get_current_time()
+    )
+    
+    return storage.update_prompt(prompt_id, updated_prompt)
 
 
 @app.delete("/prompts/{prompt_id}", status_code=204)
@@ -148,13 +164,20 @@ def create_collection(collection_data: CollectionCreate):
 
 @app.delete("/collections/{collection_id}", status_code=204)
 def delete_collection(collection_id: str):
-    # BUG #4: We delete the collection but don't handle the prompts!
-    # Prompts with this collection_id become orphaned with invalid reference
-    # Should either: delete the prompts, set collection_id to None, or prevent deletion
-    
-    if not storage.delete_collection(collection_id):
+    # Check if collection exists first
+    collection = storage.get_collection(collection_id)
+    if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
     
-    # Missing: Handle prompts that belong to this collection!
+    # Handle prompts that belong to this collection
+    # Set their collection_id to None to avoid orphaned references
+    all_prompts = storage.get_all_prompts()
+    for prompt in all_prompts:
+        if prompt.collection_id == collection_id:
+            prompt.collection_id = None
+            storage.update_prompt(prompt.id, prompt)
+    
+    # Now delete the collection
+    storage.delete_collection(collection_id)
     
     return None
