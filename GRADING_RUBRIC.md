@@ -21,10 +21,10 @@
 ## Week 1: Backend Foundation (25 Points)
 
 ### Deliverables
-- [ ] All 4 bugs fixed and working
-- [ ] PATCH endpoint implemented for partial updates
-- [ ] All provided tests pass
-- [ ] Code committed with meaningful commit messages
+- [x] All 4 bugs fixed and working
+- [x] PATCH endpoint implemented for partial updates
+- [x] All provided tests pass
+- [x] Code committed with meaningful commit messages
 
 ### Criteria
 
