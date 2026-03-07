@@ -6,7 +6,7 @@ Students should expand these tests significantly in Week 3.
 
 import pytest
 from fastapi.testclient import TestClient
-
+from backend.app.utils import get_current_timestamp
 
 class TestHealth:
     """Tests for health endpoint."""

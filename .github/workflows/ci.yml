@@ -32,7 +32,7 @@ jobs:
 
       - name: Run tests with coverage (fail if < 80%)
         env:
-          PYTHONPATH: ${{ github.workspace }}
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/backend
         run: |
           pytest \
             --cov=backend/app \

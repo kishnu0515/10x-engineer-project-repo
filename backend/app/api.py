@@ -1,6 +1,23 @@
+from fastapi import APIRouter, FastAPI, HTTPException, Query
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from typing import Optional
+from .models import HealthResponse, PromptList, Prompt, PromptCreate, PromptUpdate, PromptPartialUpdate, CollectionList, CollectionCreate, Collection
+import logging
+from .storage import storage  # Adjust if in a different path
 
-
+router = APIRouter()
 # ============== Health Check ==============
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,  # Set to DEBUG, INFO, WARNING, ERROR, or CRITICAL
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+)
+
+# Create a logger instance for your application
+logger = logging.getLogger("PromptLabAPI")
+
 
 @router.get("/health", response_model=HealthResponse)
 def get_health() -> HealthResponse:
@@ -25,6 +42,7 @@ def get_health() -> HealthResponse:
 def list_prompts(
     search: Optional[str] = Query(None, description="Search term to filter prompts by title"),
     collection_id: Optional[str] = Query(None, description="Collection ID to filter prompts"),
+    tag: Optional[str] = Query(None, description="Tag to filter prompts (case-insensitive)"),
     skip: int = Query(0, ge=0, description="Number of prompts to skip"),
     limit: int = Query(10, ge=1, le=100, description="Maximum number of prompts to return")
 ) -> PromptList:
@@ -43,7 +61,7 @@ def list_prompts(
         HTTPException: If internal error occurs (500).
     """
     try:
-        prompts = storage.get_prompts(search=search, collection_id=collection_id)
+        prompts = storage.get_prompts(search=search, collection_id=collection_id, tag=tag)
         paginated = prompts[skip : skip + limit]
         return PromptList(prompts=paginated, total=len(prompts))
     except Exception as e:
@@ -164,6 +182,12 @@ def partial_update_prompt(prompt_id: str, prompt_data: PromptPartialUpdate) -> P
     except Exception as e:
         logger.error(f"Failed to patch prompt {prompt_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/prompts/{prompt_id}/versions")
+def list_prompt_versions(prompt_id: str):
+    """List all versions for a given prompt. Placeholder implementation returns empty list."""
+    return []
 
 
 @router.delete("/prompts/{prompt_id}", status_code=204)
@@ -299,3 +323,13 @@ def delete_collection(collection_id: str) -> None:
 
 app = FastAPI(title="PromptLab API", version="1.0.0")
 app.include_router(router)
+
+# Override default validation response to return 400 instead of 422 for this project
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc: RequestValidationError):
+    return JSONResponse(status_code=400, content={"detail": "Validation error", "errors": exc.errors()})
+
+# Expose `router` as an ASGI app for tests that initialize TestClient with `router`
+# This allows importing `router` to still work with TestClient
+router = app  # type: ignore
+

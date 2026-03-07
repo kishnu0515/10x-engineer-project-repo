@@ -2,7 +2,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
-from app.utils import generate_id, get_current_timestamp
+from .utils import generate_id, get_current_timestamp, sanitize_string
 # ============== Prompt Models ==============
 
 class PromptBase(BaseModel):
@@ -64,10 +64,38 @@ class Prompt(PromptBase):
         id: Unique identifier for the prompt (auto-generated UUID).
         created_at: Timestamp when the prompt was created (auto-generated).
         updated_at: Timestamp when the prompt was last updated (auto-generated).
+        tags: List of lowercase tags associated with this prompt.
     """
     id: str = Field(default_factory=generate_id, description="Unique identifier for the prompt")
     created_at: datetime = Field(default_factory=get_current_timestamp, description="Timestamp when the prompt was created")
     updated_at: datetime = Field(default_factory=get_current_timestamp, description="Timestamp when the prompt was last updated")
+    tags: List[str] = Field(default_factory=list, description="List of tags associated with the prompt")
+
+    def _normalize_tag(self, tag: str) -> str:
+        normalized = sanitize_string(tag).lower()
+        if not normalized:
+            raise ValueError("Tag cannot be empty")
+        return normalized
+
+    def add_tag(self, tag: str) -> None:
+        t = self._normalize_tag(tag)
+        if t not in self.tags:
+            self.tags.append(t)
+
+    def remove_tag(self, tag: str) -> None:
+        t = self._normalize_tag(tag)
+        if t in self.tags:
+            self.tags.remove(t)
+
+    def has_tag(self, tag: str) -> bool:
+        try:
+            t = self._normalize_tag(tag)
+        except ValueError:
+            return False
+        return t in self.tags
+
+    def list_tags(self) -> List[str]:
+        return list(self.tags)
 
     class Config:
         from_attributes = True
@@ -104,9 +132,11 @@ class Collection(CollectionBase):
     Attributes:
         id: Unique identifier for the collection (auto-generated UUID).
         created_at: Timestamp when the collection was created (auto-generated).
+        prompts: List of prompt IDs that belong to this collection.
     """
     id: str = Field(default_factory=generate_id, description="Unique identifier for the collection")
     created_at: datetime = Field(default_factory=get_current_timestamp, description="Timestamp when the collection was created")
+    prompts: List[str] = Field(default_factory=list, description="List of prompt IDs in this collection")
 
     class Config:
         from_attributes = True

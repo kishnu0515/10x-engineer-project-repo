@@ -2,6 +2,12 @@
   "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
   "name": "Assessment B - Inventory API",
 
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": true
+    }
+  },
+
   "postCreateCommand": "bash .devcontainer/setup.sh", 
 
   "remoteEnv": {

@@ -1,3 +1,6 @@
+from typing import Dict, List, Optional
+from .models import Prompt, Collection, PromptUpdate, PromptPartialUpdate
+from .utils import get_current_timestamp
 
 class Storage:
     """In-memory storage for prompts and collections.
@@ -16,9 +19,16 @@ class Storage:
         clear(): Clears all prompts and collections from storage.
     """
 
-    def __init__(self):
+    def __init__(self, raise_on_missing: bool = True):
+        """Initialize the storage.
+
+        Args:
+            raise_on_missing: If True, raise a KeyError when an entity is not found.
+                              If False, return None when not found.
+        """
         self._prompts: Dict[str, Prompt] = {}
         self._collections: Dict[str, Collection] = {}
+        self._raise_on_missing = raise_on_missing
 
     def create_prompt(self, prompt: Prompt) -> Prompt:
         """Store a new prompt in storage.
@@ -40,19 +50,26 @@ class Storage:
 
         Returns:
             Optional[Prompt]: The requested prompt if found, None otherwise.
+
+        Raises:
+            KeyError: If the prompt is not found and raise_on_missing is True.
         """
-        return self._prompts.get(prompt_id)
+        prompt = self._prompts.get(prompt_id)
+        if prompt is None and self._raise_on_missing:
+            raise KeyError(f"Prompt with id '{prompt_id}' not found")
+        return prompt
 
     def get_prompts(
         self,
         search: Optional[str] = None,
         collection_id: Optional[str] = None,
+        tag: Optional[str] = None,
     ) -> List[Prompt]:
-        """Retrieve prompts with optional filtering by search term or collection.
-
+        """Retrieve prompts with optional filtering by search term, collection, or tag.
         Args:
             search (Optional[str]): Search string to filter prompts by title.
             collection_id (Optional[str]): ID of the collection to filter prompts.
+            tag (Optional[str]): Tag to filter prompts (case-insensitive).
 
         Returns:
             List[Prompt]: A list of prompts that match the filter criteria.
@@ -63,6 +80,9 @@ class Storage:
             results = [prompt for prompt in results if normalized_search in prompt.title.lower()]
         if collection_id:
             results = [prompt for prompt in results if prompt.collection_id == collection_id]
+        if tag:
+            normalized_tag = tag.strip().lower()
+            results = [prompt for prompt in results if normalized_tag in getattr(prompt, "tags", [])]
         return sorted(results, key=lambda prompt: prompt.updated_at, reverse=True)
 
     def update_prompt(self, prompt_id: str, prompt_data: PromptUpdate) -> Optional[Prompt]:
@@ -84,36 +104,31 @@ class Storage:
         return updated
 
     def partial_update_prompt(self, prompt_id: str, prompt_data: PromptPartialUpdate) -> Optional[Prompt]:
-        """Partially update a prompt with provided fields.
+        """Partially update a prompt with provided fields."""
 
-        Args:
-            prompt_id (str): The unique identifier of the prompt to update.
-            prompt_data (PromptPartialUpdate): Partial data to update the prompt.
-
-        Returns:
-            Optional[Prompt]: The updated prompt if successful, None if not found.
-        """
         existing = self._prompts.get(prompt_id)
         if not existing:
             return None
         updates = prompt_data.model_dump(exclude_unset=True)
         if not updates:
             return existing
+
         updates["updated_at"] = get_current_timestamp()
         updated = existing.model_copy(update=updates)
         self._prompts[prompt_id] = updated
         return updated
 
-    def delete_prompt(self, prompt_id: str) -> bool:
+    def delete_prompt(self, prompt_id: str) -> None:
         """Delete a prompt by its unique identifier.
 
         Args:
             prompt_id (str): The unique identifier of the prompt to delete.
 
         Returns:
-            bool: True if the prompt was deleted, False if it was not found.
+            None
         """
-        return self._prompts.pop(prompt_id, None) is not None
+        self._prompts.pop(prompt_id, None)
+        return None
 
     def create_collection(self, collection: Collection) -> Collection:
         """Store a new collection in storage.
@@ -159,7 +174,16 @@ class Storage:
         Returns:
             bool: True if the collection was deleted, False if it was not found.
         """
-        return self._collections.pop(collection_id, None) is not None
+        # Remove the collection
+        deleted = self._collections.pop(collection_id, None) is not None
+        if not deleted:
+            return False
+        # Nullify collection_id on any prompts that referenced this collection
+        for prompt_id, prompt in list(self._prompts.items()):
+            if prompt.collection_id == collection_id:
+                updated = prompt.model_copy(update={"collection_id": None, "updated_at": get_current_timestamp()})
+                self._prompts[prompt_id] = updated
+        return True
 
     def clear(self) -> None:
         """Clear all stored prompts and collections.
@@ -168,3 +192,7 @@ class Storage:
         """
         self._prompts.clear()
         self._collections.clear()
+
+# Instantiate the Storage object with non-raising behavior for API usage
+storage = Storage(raise_on_missing=False)
+
