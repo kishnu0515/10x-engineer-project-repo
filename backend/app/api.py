@@ -1,18 +1,3 @@
-"""API endpoints for PromptLab"""
-
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, List
-import logging
-
-from .models import (
-    Prompt, PromptCreate, PromptUpdate, PromptPartialUpdate, PromptList,
-    Collection, CollectionCreate, CollectionList, HealthResponse
-)
-from .storage import Storage
-
-logger = logging.getLogger(__name__)
-router = APIRouter()
-storage = Storage()
 
 
 # ============== Health Check ==============
@@ -46,10 +31,10 @@ def list_prompts(
     """Retrieve a paginated list of prompts with optional filtering.
     
     Args:
-        search: Optional search string to filter prompts by title.
-        collection_id: Optional collection ID to filter prompts by collection.
-        skip: Number of prompts to skip (pagination offset).
-        limit: Maximum number of prompts to return (pagination limit).
+        search (str): Optional search string to filter prompts by title.
+        collection_id (str): Optional collection ID to filter prompts by collection.
+        skip (int): Number of prompts to skip (pagination offset).
+        limit (int): Maximum number of prompts to return (pagination limit).
         
     Returns:
         PromptList: A list of prompts and total count.
@@ -71,7 +56,7 @@ def get_prompt(prompt_id: str) -> Prompt:
     """Retrieve a specific prompt by its unique identifier.
     
     Args:
-        prompt_id: The unique identifier of the prompt to retrieve.
+        prompt_id (str): The unique identifier of the prompt to retrieve.
         
     Returns:
         Prompt: The requested Prompt object.
@@ -96,7 +81,7 @@ def create_prompt(prompt_data: PromptCreate) -> Prompt:
     """Create a new prompt.
     
     Args:
-        prompt_data: The PromptCreate object containing prompt details.
+        prompt_data (PromptCreate): The PromptCreate object containing prompt details.
         
     Returns:
         Prompt: The created Prompt object with auto-generated ID and timestamps.
@@ -122,8 +107,8 @@ def update_prompt(prompt_id: str, prompt_data: PromptUpdate) -> Prompt:
     """Completely replace an existing prompt (all fields required).
     
     Args:
-        prompt_id: The unique identifier of the prompt to update.
-        prompt_data: The PromptUpdate object with complete replacement data.
+        prompt_id (str): The unique identifier of the prompt to update.
+        prompt_data (PromptUpdate): The PromptUpdate object with complete replacement data.
         
     Returns:
         Prompt: The updated Prompt object with new timestamp.
@@ -154,8 +139,8 @@ def partial_update_prompt(prompt_id: str, prompt_data: PromptPartialUpdate) -> P
     """Partially update an existing prompt (only provided fields updated).
     
     Args:
-        prompt_id: The unique identifier of the prompt to update.
-        prompt_data: The PromptPartialUpdate object with fields to update.
+        prompt_id (str): The unique identifier of the prompt to update.
+        prompt_data (PromptPartialUpdate): The PromptPartialUpdate object with fields to update.
         
     Returns:
         Prompt: The updated Prompt object with new timestamp.
@@ -186,7 +171,7 @@ def delete_prompt(prompt_id: str) -> None:
     """Delete a prompt by its unique identifier.
     
     Args:
-        prompt_id: The unique identifier of the prompt to delete.
+        prompt_id (str): The unique identifier of the prompt to delete.
         
     Raises:
         HTTPException: If prompt not found (404) or internal error (500).
@@ -215,8 +200,8 @@ def list_collections(
     """Retrieve a paginated list of all collections.
     
     Args:
-        skip: Number of collections to skip (pagination offset).
-        limit: Maximum number of collections to return (pagination limit).
+        skip (int): Number of collections to skip (pagination offset).
+        limit (int): Maximum number of collections to return (pagination limit).
         
     Returns:
         CollectionList: A list of collections and total count.
@@ -238,7 +223,7 @@ def get_collection(collection_id: str) -> Collection:
     """Retrieve a specific collection by its unique identifier.
     
     Args:
-        collection_id: The unique identifier of the collection to retrieve.
+        collection_id (str): The unique identifier of the collection to retrieve.
         
     Returns:
         Collection: The requested Collection object.
@@ -263,7 +248,7 @@ def create_collection(collection_data: CollectionCreate) -> Collection:
     """Create a new collection.
     
     Args:
-        collection_data: The CollectionCreate object containing collection details.
+        collection_data (CollectionCreate): The CollectionCreate object containing collection details.
         
     Returns:
         Collection: The created Collection object with auto-generated ID and timestamp.
@@ -293,7 +278,7 @@ def delete_collection(collection_id: str) -> None:
         Consider implementing cascade delete or nullifying collection_id in prompts.
     
     Args:
-        collection_id: The unique identifier of the collection to delete.
+        collection_id (str): The unique identifier of the collection to delete.
         
     Raises:
         HTTPException: If collection not found (404) or internal error (500).
@@ -310,3 +295,7 @@ def delete_collection(collection_id: str) -> None:
     except Exception as e:
         logger.error(f"Failed to delete collection {collection_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+app = FastAPI(title="PromptLab API", version="1.0.0")
+app.include_router(router)

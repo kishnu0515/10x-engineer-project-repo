@@ -143,7 +143,7 @@ def get_current_timestamp() -> datetime:
         datetime: The current datetime in UTC.
         
     Example:
-        >>> now = get_current_timestamp()
+        >>> now = get_current_timestampstamp()
         >>> isinstance(now, datetime)
         True
         >>> now.tzinfo is None or str(now.tzinfo) == 'UTC'

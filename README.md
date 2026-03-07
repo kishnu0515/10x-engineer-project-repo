@@ -37,6 +37,38 @@ Our aim is to streamline the process of prompt engineering, helping teams to col
 - **Frontend**: Node.js 18+ for frontend development (coming in Week 4).
 - **System**: Git for version control.
 
-### Installation Guide
+## Quick Start Guide
 
-Clone the repository and navigate to the project directory:
+To quickly start using PromptLab, ensure you have the prerequisites installed, then clone the repository and run the application using the provided installation steps.
+
+## API Endpoint Summary with Examples
+
+### Health Check
+- **GET** `/health`: Returns the health status of the API.
+
+### Prompts
+- **GET** `/prompts`: Retrieves a list of prompts.
+- **POST** `/prompts`: Creates a new prompt.
+
+### Collections
+- **GET** `/collections`: Retrieves a list of collections.
+- **POST** `/collections`: Creates a new collection.
+
+Replace these examples with more as you build your application.
+
+## Development Setup
+
+1. Clone the repository.
+2. Navigate to the `backend` directory.
+3. Install backend dependencies via `pip install -r requirements.txt`.
+4. Run the backend server.
+
+## Contributing Guidelines
+
+We welcome contributions! Here are some ways you can contribute:
+- Report bugs.
+- Suggest features.
+- Create pull requests for new features.
+
+Please make sure to update tests as appropriate and follow coding conventions.
+

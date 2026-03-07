@@ -1,148 +1,170 @@
-class Storage:
-    """
-    An in-memory storage class for managing prompts and collections.
 
-    Attributes:
-        _prompts (Dict[str, Prompt]): A dictionary to store prompts by their ID.
-        _collections (Dict[str, Collection]): A dictionary to store collections by their ID.
+class Storage:
+    """In-memory storage for prompts and collections.
+
+    Methods:
+        create_prompt(prompt): Stores a new prompt in storage.
+        get_prompt(prompt_id): Retrieves a prompt by ID.
+        get_prompts(search, collection_id): Retrieves prompts with optional filtering.
+        update_prompt(prompt_id, prompt_data): Updates an existing prompt.
+        partial_update_prompt(prompt_id, prompt_data): Partially updates a prompt.
+        delete_prompt(prompt_id): Deletes a prompt by ID.
+        create_collection(collection): Stores a new collection in storage.
+        get_collection(collection_id): Retrieves a collection by ID.
+        get_collections(): Retrieves all collections.
+        delete_collection(collection_id): Deletes a collection by ID.
+        clear(): Clears all prompts and collections from storage.
     """
 
     def __init__(self):
-        """
-        Initializes the Storage class with empty dictionaries for prompts and collections.
-        """
         self._prompts: Dict[str, Prompt] = {}
         self._collections: Dict[str, Collection] = {}
-    
+
     def create_prompt(self, prompt: Prompt) -> Prompt:
-        """
-        Adds a new prompt to the storage.
+        """Store a new prompt in storage.
 
         Args:
-            prompt (Prompt): The prompt to be added.
+            prompt (Prompt): The prompt to store.
 
         Returns:
-            Prompt: The prompt that was added.
+            Prompt: The stored prompt.
         """
         self._prompts[prompt.id] = prompt
         return prompt
-    
+
     def get_prompt(self, prompt_id: str) -> Optional[Prompt]:
-        """
-        Retrieves a prompt by its ID.
+        """Retrieve a prompt by its unique identifier.
 
         Args:
-            prompt_id (str): The ID of the prompt to retrieve.
+            prompt_id (str): The unique identifier of the prompt.
 
         Returns:
-            Optional[Prompt]: The prompt with the specified ID, or None if not found.
+            Optional[Prompt]: The requested prompt if found, None otherwise.
         """
         return self._prompts.get(prompt_id)
-    
-    def get_all_prompts(self) -> List[Prompt]:
-        """
-        Retrieves all prompts.
 
-        Returns:
-            List[Prompt]: A list of all stored prompts.
-        """
-        return list(self._prompts.values())
-    
-    def update_prompt(self, prompt_id: str, prompt: Prompt) -> Optional[Prompt]:
-        """
-        Updates an existing prompt.
+    def get_prompts(
+        self,
+        search: Optional[str] = None,
+        collection_id: Optional[str] = None,
+    ) -> List[Prompt]:
+        """Retrieve prompts with optional filtering by search term or collection.
 
         Args:
-            prompt_id (str): The ID of the prompt to update.
-            prompt (Prompt): The new prompt data.
+            search (Optional[str]): Search string to filter prompts by title.
+            collection_id (Optional[str]): ID of the collection to filter prompts.
 
         Returns:
-            Optional[Prompt]: The updated prompt, or None if the prompt ID does not exist.
+            List[Prompt]: A list of prompts that match the filter criteria.
         """
-        if prompt_id not in self._prompts:
+        results = list(self._prompts.values())
+        if search:
+            normalized_search = search.strip().lower()
+            results = [prompt for prompt in results if normalized_search in prompt.title.lower()]
+        if collection_id:
+            results = [prompt for prompt in results if prompt.collection_id == collection_id]
+        return sorted(results, key=lambda prompt: prompt.updated_at, reverse=True)
+
+    def update_prompt(self, prompt_id: str, prompt_data: PromptUpdate) -> Optional[Prompt]:
+        """Update an existing prompt with new data.
+
+        Args:
+            prompt_id (str): The unique identifier of the prompt to update.
+            prompt_data (PromptUpdate): The data to update the prompt with.
+
+        Returns:
+            Optional[Prompt]: The updated prompt if successful, None if not found.
+        """
+        existing = self._prompts.get(prompt_id)
+        if not existing:
             return None
-        self._prompts[prompt_id] = prompt
-        return prompt
-    
+        updated_values = {**prompt_data.model_dump(), "updated_at": get_current_timestamp()}
+        updated = existing.model_copy(update=updated_values)
+        self._prompts[prompt_id] = updated
+        return updated
+
+    def partial_update_prompt(self, prompt_id: str, prompt_data: PromptPartialUpdate) -> Optional[Prompt]:
+        """Partially update a prompt with provided fields.
+
+        Args:
+            prompt_id (str): The unique identifier of the prompt to update.
+            prompt_data (PromptPartialUpdate): Partial data to update the prompt.
+
+        Returns:
+            Optional[Prompt]: The updated prompt if successful, None if not found.
+        """
+        existing = self._prompts.get(prompt_id)
+        if not existing:
+            return None
+        updates = prompt_data.model_dump(exclude_unset=True)
+        if not updates:
+            return existing
+        updates["updated_at"] = get_current_timestamp()
+        updated = existing.model_copy(update=updates)
+        self._prompts[prompt_id] = updated
+        return updated
+
     def delete_prompt(self, prompt_id: str) -> bool:
-        """
-        Deletes a prompt from the storage.
+        """Delete a prompt by its unique identifier.
 
         Args:
-            prompt_id (str): The ID of the prompt to delete.
+            prompt_id (str): The unique identifier of the prompt to delete.
 
         Returns:
-            bool: True if the prompt was successfully deleted, False otherwise.
+            bool: True if the prompt was deleted, False if it was not found.
         """
-        if prompt_id in self._prompts:
-            del self._prompts[prompt_id]
-            return True
-        return False
-    
+        return self._prompts.pop(prompt_id, None) is not None
+
     def create_collection(self, collection: Collection) -> Collection:
-        """
-        Adds a new collection to the storage.
+        """Store a new collection in storage.
 
         Args:
-            collection (Collection): The collection to be added.
+            collection (Collection): The collection to store.
 
         Returns:
-            Collection: The collection that was added.
+            Collection: The stored collection.
         """
         self._collections[collection.id] = collection
         return collection
-    
+
     def get_collection(self, collection_id: str) -> Optional[Collection]:
-        """
-        Retrieves a collection by its ID.
+        """Retrieve a collection by its unique identifier.
 
         Args:
-            collection_id (str): The ID of the collection to retrieve.
+            collection_id (str): The unique identifier of the collection.
 
         Returns:
-            Optional[Collection]: The collection with the specified ID, or None if not found.
+            Optional[Collection]: The requested collection if found, None otherwise.
         """
         return self._collections.get(collection_id)
-    
-    def get_all_collections(self) -> List[Collection]:
-        """
-        Retrieves all collections.
+
+    def get_collections(self) -> List[Collection]:
+        """Retrieve all collections, sorted by creation date.
 
         Returns:
             List[Collection]: A list of all stored collections.
         """
-        return list(self._collections.values())
-    
+        return sorted(
+            self._collections.values(),
+            key=lambda collection: collection.created_at,
+            reverse=True,
+        )
+
     def delete_collection(self, collection_id: str) -> bool:
-        """
-        Deletes a collection from the storage.
+        """Delete a collection by its unique identifier.
 
         Args:
-            collection_id (str): The ID of the collection to delete.
+            collection_id (str): The unique identifier of the collection to delete.
 
         Returns:
-            bool: True if the collection was successfully deleted, False otherwise.
+            bool: True if the collection was deleted, False if it was not found.
         """
-        if collection_id in self._collections:
-            del self._collections[collection_id]
-            return True
-        return False
-    
-    def get_prompts_by_collection(self, collection_id: str) -> List[Prompt]:
-        """
-        Retrieves prompts that belong to a specific collection.
+        return self._collections.pop(collection_id, None) is not None
 
-        Args:
-            collection_id (str): The ID of the collection.
+    def clear(self) -> None:
+        """Clear all stored prompts and collections.
 
-        Returns:
-            List[Prompt]: A list of prompts that are part of the collection.
-        """
-        return [p for p in self._prompts.values() if p.collection_id == collection_id]
-    
-    def clear(self):
-        """
-        Clears all prompts and collections from storage.
+        This method deletes all prompts and collections.
         """
         self._prompts.clear()
         self._collections.clear()

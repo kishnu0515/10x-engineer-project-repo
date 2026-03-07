@@ -1,39 +1,8 @@
-"""Pydantic models for PromptLab"""
 
-from datetime import datetime
-from typing import Optional, List
 from pydantic import BaseModel, Field
-from uuid import uuid4
-
-
-def generate_id() -> str:
-    """Generate a unique identifier using UUID4.
-
-    Returns:
-        A string representation of a UUID4.
-
-    Example:
-        >>> id = generate_id()
-        >>> len(id)
-        36
-    """
-    return str(uuid4())
-
-
-def get_current_time() -> datetime:
-    """Get the current UTC datetime.
-
-    Returns:
-        The current datetime in UTC.
-
-    Example:
-        >>> now = get_current_time()
-        >>> isinstance(now, datetime)
-        True
-    """
-    return datetime.utcnow()
-
-
+from typing import Optional, List
+from datetime import datetime
+from app.utils import generate_id, get_current_timestamp
 # ============== Prompt Models ==============
 
 class PromptBase(BaseModel):
@@ -97,8 +66,8 @@ class Prompt(PromptBase):
         updated_at: Timestamp when the prompt was last updated (auto-generated).
     """
     id: str = Field(default_factory=generate_id, description="Unique identifier for the prompt")
-    created_at: datetime = Field(default_factory=get_current_time, description="Timestamp when the prompt was created")
-    updated_at: datetime = Field(default_factory=get_current_time, description="Timestamp when the prompt was last updated")
+    created_at: datetime = Field(default_factory=get_current_timestamp, description="Timestamp when the prompt was created")
+    updated_at: datetime = Field(default_factory=get_current_timestamp, description="Timestamp when the prompt was last updated")
 
     class Config:
         from_attributes = True
@@ -137,7 +106,7 @@ class Collection(CollectionBase):
         created_at: Timestamp when the collection was created (auto-generated).
     """
     id: str = Field(default_factory=generate_id, description="Unique identifier for the collection")
-    created_at: datetime = Field(default_factory=get_current_time, description="Timestamp when the collection was created")
+    created_at: datetime = Field(default_factory=get_current_timestamp, description="Timestamp when the collection was created")
 
     class Config:
         from_attributes = True
@@ -182,4 +151,6 @@ class HealthResponse(BaseModel):
     """
     status: str = Field(..., description="Status of the system")
     version: str = Field(..., description="Version of the system")
+
+
 
