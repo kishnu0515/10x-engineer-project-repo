@@ -1,8 +1,19 @@
 from fastapi import APIRouter, FastAPI, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Optional
-from .models import HealthResponse, PromptList, Prompt, PromptCreate, PromptUpdate, PromptPartialUpdate, CollectionList, CollectionCreate, Collection
+from .models import (
+    HealthResponse,
+    PromptList,
+    Prompt,
+    PromptCreate,
+    PromptUpdate,
+    PromptPartialUpdate,
+    CollectionList,
+    CollectionCreate,
+    Collection,
+)
 import logging
 from .storage import storage  # Adjust if in a different path
 
@@ -322,6 +333,16 @@ def delete_collection(collection_id: str) -> None:
 
 
 app = FastAPI(title="PromptLab API", version="1.0.0")
+
+# CORS configuration for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, restrict this to your frontend origin(s)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(router)
 
 # Override default validation response to return 400 instead of 422 for this project
